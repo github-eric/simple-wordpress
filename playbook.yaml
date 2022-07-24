@@ -1,0 +1,80 @@
+- name: Install wordpress in new server
+  hosts: all
+  become: yes
+  gather_facts: False
+
+  tasks:
+  - name: Yum update
+    yum:
+      name: '*'
+      state: latest
+
+ #installing php using linux-extra
+
+  - name: Installing PHP
+    shell: amazon-linux-extras enable php7.2
+
+  - name: Clean metadata
+    shell: yum clean metadata
+
+
+  - name: install Apache server
+    yum: name={{ item }} state=present
+    loop: ['httpd','php-gd','mod_ssl',]
+
+  # install php extension
+  - name: install php extensions
+    yum: name={{ item }} state=present
+    loop: ['php-cli','php-pdo','php-fpm','php-json','php-mysqlnd']
+
+  - name: Set permissions for directories
+    shell: "/usr/bin/find /var/www/html/ -type d -exec chmod 2775 {} \\;"
+
+  - name: Set permissions for files
+    shell: "/usr/bin/find /var/www/html/ -type f -exec chmod 0664 {} \\;"
+
+  # wordpress download and install
+  - name: Wordpress download and unpacking
+    unarchive:
+      src: https://wordpress.org/latest.tar.gz
+      dest: "/var/www"
+      remote_src: yes
+
+  - name: Copy wordpress files to /html folder
+    shell: cp /var/www/wordpress/. /var/www/html -r
+
+  - name: Delete old wordpress files
+    shell: rm /var/www/wordpress -r
+
+  - name: Set up wp-config
+    template:
+      src: "files/wp-config.php"
+      dest: "/var/www/html/wp-config.php"
+
+  - name: set permissions (changing ownership)
+    shell: chown -R ec2-user:apache /var/www/html
+
+  - name: Copy SSL certificate
+    template:
+      src: "cert/server.crt"
+      dest: "/etc/pki/tls/certs/server.crt"
+
+  - name: Copy SSL private key
+    template:
+      src: "cert/server.key"
+      dest: "/etc/pki/tls/private/server.key"
+
+  - name: Set up SSL
+    template:
+      src: "files/ssl.conf"
+      dest: "/etc/httpd/conf.d/ssl.conf"
+
+  - name: Update httpd file to add TLS rediretion
+    template:
+      src: "files/httpd.conf"
+      dest: "/etc/httpd/conf/httpd.conf"
+
+   # apache server started
+  - name: services started
+    service: name={{ item }} state=restarted enabled=True
+    loop: ['httpd']
