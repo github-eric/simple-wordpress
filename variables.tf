@@ -1,0 +1,10 @@
+variable "aws_region" {}
+variable "db_root_user" {}
+variable "db_root_password" {}
+variable "db_app_user" {}
+variable "db_app_password" {}
+variable "db_address" {}
+variable "hosted_zone_id" {}
+variable "PUBLIC_KEY_PATH" {}
+variable "PRIV_KEY_PATH" {}
+variable "wordpress_address" {}
